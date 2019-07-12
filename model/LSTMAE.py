@@ -11,16 +11,13 @@ class EncoderLSTM(torch.nn.Module):
         self.isCuda = isCuda
 
         self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.relu = nn.ReLU()
-
-        #initialize weights
-        torch.nn.init.xavier_normal(self.lstm, gain=np.sqrt(2))
+        self.relu = torch.nn.ReLU()
 
     def forward(self, input):
         tt = torch.cuda if self.isCuda else torch
         h0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
         c0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
-        encoded_input, hidden = self.lstm(input (h0, c0))
+        encoded_input, hidden = self.lstm(input, (h0, c0))
         encoded_input = self.relu(encoded_input)
         return encoded_input
 
@@ -32,11 +29,8 @@ class DecoderLSTM(torch.nn.Module):
         self.num_layers = num_layers
 
         self.isCuda = isCuda
-        self.lstm = nn.LSTM(hidden_size, output_size, num_layers, batch_first=True)
-        self.sigmoid = nn.Sigmoid()
-
-        #initialize weights
-        torch.nn.init.xavier_normal(self.lstm, gain=np.sqrt(2))
+        self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True)
+        self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, encoded_input):
         tt = torch.cuda if self.isCuda else torch
@@ -47,7 +41,7 @@ class DecoderLSTM(torch.nn.Module):
         return decoded_output
 
 
-class LSTMAE(nn.Module):
+class LSTMAE(torch.nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, isCuda):
         super(LSTMAE, self).__init__()
         self.encoder = EncoderLSTM(input_size, hidden_size, num_layers, isCuda)
