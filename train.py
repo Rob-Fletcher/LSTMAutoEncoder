@@ -40,18 +40,16 @@ def train(args):
         num_workers=args.n_cpu
     )
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(),lr=0.01)
     mse_loss = torch.nn.MSELoss()
+    #CE_loss = torch.nn.CrossEntropyLoss()
 
-    #writer.add_graph(model)
-
-    "+ Starting Training Loop"
+    print("+ Starting Training Loop")
     for epoch in range(args.epochs):
         model.train()
         start_time = time.time()
         epoch_loss = 0
         for batch_i, paths in enumerate(dataloader):
-            print("Starting batch...")
             batches_done = len(dataloader)*epoch + batch_i
 
             paths = Variable(paths.to(device))
@@ -61,12 +59,13 @@ def train(args):
             optimizer.step()
             optimizer.zero_grad()
 
+            writer.add_scalar(tag="loss/MSE Loss", scalar_value=loss, global_step=int(batches_done) )
+            #print(f"loss {loss}, seq_len {paths.shape}   batches_done  {batches_done}")
             epoch_loss += loss
-            if batch_i%10 == 0:
-                writer.add_scalar("loss", epoch_loss/float(batches_done), epoch )
 
-        print(f"Epoch: {epoch}   loss: {epoch_loss/float(args.batch_size)}")
-        if epoch%10==0:
+        print(f"Epoch: {epoch} loss:  {epoch_loss/float(len(dataloader))}   Time: {time.time()-start_time}")
+        writer.add_scalar(tag="loss/epoch loss", scalar_value=epoch_loss/float(len(dataloader)), global_step=int(epoch))
+        if epoch%5==4:
             torch.save(model.state_dict(), f"checkpoints/lstmAE_ckpt_epoch_{epoch}.pth")
 
     return
