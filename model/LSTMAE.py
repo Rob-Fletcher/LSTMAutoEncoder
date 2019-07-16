@@ -8,16 +8,11 @@ class EncoderLSTM(torch.nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.isCuda = isCuda
 
         self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.relu = torch.nn.ReLU()
-        #self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, input):
         encoded_input, hidden = self.lstm(input)
-        encoded_input = self.relu(encoded_input)
-        #encoded_input = self.sigmoid(encoded_input)
         return encoded_input
 
 class DecoderLSTM(torch.nn.Module):
@@ -27,7 +22,6 @@ class DecoderLSTM(torch.nn.Module):
         self.output_size = output_size
         self.num_layers = num_layers
 
-        self.isCuda = isCuda
         self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True)
         #self.sigmoid = torch.nn.Sigmoid()
         self.relu = torch.nn.ReLU()
