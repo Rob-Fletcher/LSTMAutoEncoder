@@ -89,7 +89,7 @@ if __name__=="__main__":
     parser.add_argument("--n_cpu", type=int, default=0, help="")
     parser.add_argument("--train_data", type=str, required=True, help="Path to the training data")
     parser.add_argument("--valid_data", type=str, help="Path to the validation data")
-    parser.add_argument("--hidden_size", type=int, default=20, help="dimension of hidden/encoded size")
+    parser.add_argument("--hidden_size", type=int, default=100, help="dimension of hidden/encoded size")
     parser.add_argument("--num_layers", type=int, default=1, help="Number of layers in the encoder/decoder LSTM")
     parser.add_argument("--seq_len", type=int, default=10, help="Sequence length to train on.")
     args = parser.parse_args()
