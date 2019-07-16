@@ -18,11 +18,14 @@ class PathData(Dataset):
         self.detections = tables.open_file(data_file).root.detections
         uniqueIDs_all = torch.tensor(self.detections[:]['ID'], dtype=torch.int32).unique()
         self.mean = torch.tensor([self.detections[:]['x1'].mean(), self.detections[:]['y1'].mean()], dtype=torch.float64)
+        self.std = torch.tensor([self.detections[:]['x1'].std(), self.detections[:]['y1'].std()], dtype=torch.float64)
+        self.min = torch.tensor([self.detections[:]['x1'].min(), self.detections[:]['y1'].min()], dtype=torch.float64)
+        self.max = torch.tensor([self.detections[:]['x1'].max(), self.detections[:]['y1'].max()], dtype=torch.float64)
         uniqueList = []
         for id in uniqueIDs_all:
             path = self.detections.read_where("""ID=={}""".format(id))
-            if len(path) < 10:
-                print(f"ID: {id} has squence length less than 10. Discarding")
+            if len(path) < self.seq_len:
+                print(f"ID: {id} has squence length less than {self.seq_len}. Discarding")
             else:
                 uniqueList.append(id)
 
@@ -38,9 +41,15 @@ class PathData(Dataset):
         path = self.detections.read_where("""ID=={}""".format(self.uniqueIDs[idx]))[['x1','y1']]
         path = torch.tensor(path.tolist(), dtype=torch.float64)
         path.sub_(self.mean)
-        subPath = torch.zeros([100,2], dtype=torch.float64)
+        #path.div_(self.std)
+        #path.sub_(self.min)
+        #path.div_(self.max - self.min)
+        subPath = torch.zeros([self.seq_len,2], dtype=torch.float32)
         length = len(path)
-        if length > 100:
-            startPoint = randint(0, length-100)
-            subPath[:] = path[startPoint:startPoint+100]
-        return path
+        if length >= self.seq_len:
+            startPoint = randint(0, length-self.seq_len)
+            subPath[:] = path[startPoint:startPoint+self.seq_len]
+        else:
+            print(f"length less than {self.seq_len}")
+            subPath[:length] = path[:]
+        return subPath

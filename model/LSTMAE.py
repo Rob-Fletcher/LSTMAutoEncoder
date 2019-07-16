@@ -12,13 +12,16 @@ class EncoderLSTM(torch.nn.Module):
 
         self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.relu = torch.nn.ReLU()
+        #self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, input):
         tt = torch.cuda if self.isCuda else torch
-        h0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
-        c0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
-        encoded_input, hidden = self.lstm(input, (h0, c0))
+        #h0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
+        #c0 = Variable(tt.FloatTensor(self.num_layers, input.size(0), self.hidden_size))
+        #encoded_input, hidden = self.lstm(input, (h0, c0))
+        encoded_input, hidden = self.lstm(input)
         encoded_input = self.relu(encoded_input)
+        #encoded_input = self.sigmoid(encoded_input)
         return encoded_input
 
 class DecoderLSTM(torch.nn.Module):
@@ -30,14 +33,17 @@ class DecoderLSTM(torch.nn.Module):
 
         self.isCuda = isCuda
         self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True)
-        self.sigmoid = torch.nn.Sigmoid()
+        #self.sigmoid = torch.nn.Sigmoid()
+        self.relu = torch.nn.ReLU()
 
     def forward(self, encoded_input):
         tt = torch.cuda if self.isCuda else torch
-        h0 = Variable(tt.FloatTensor(self.num_layers, encoded_input.size(0), self.output_size))
-        c0 = Variable(tt.FloatTensor(self.num_layers, encoded_input.size(0), self.output_size))
-        decoded_output, hidden = self.lstm(encoded_input, (h0, c0))
-        decoded_output = self.sigmoid(decoded_output)
+        #h0 = Variable(tt.FloatTensor(self.num_layers, encoded_input.size(0), self.output_size))
+        #c0 = Variable(tt.FloatTensor(self.num_layers, encoded_input.size(0), self.output_size))
+        #decoded_output, hidden = self.lstm(encoded_input, (h0, c0))
+        decoded_output, hidden = self.lstm(encoded_input)
+        #decoded_output = self.sigmoid(decoded_output)
+        decoded_output = self.relu(decoded_output)
         return decoded_output
 
 
@@ -49,5 +55,6 @@ class LSTMAE(torch.nn.Module):
 
     def forward(self, input):
         encoded_input = self.encoder(input)
+        assert not torch.isnan(encoded_input).any()
         decoded_output = self.decoder(encoded_input)
         return decoded_output

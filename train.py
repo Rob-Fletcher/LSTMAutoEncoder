@@ -32,17 +32,16 @@ def train(args):
     if args.weights:
         model.load_state_dict(torch.load(args.weights))
 
-    dataset = PathData(args.train_data)
+    dataset = PathData(args.train_data, sequence_length=50)
     dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=args.n_cpu
     )
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=0.01)
-    mse_loss = torch.nn.MSELoss()
-    #CE_loss = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
+    loss_func = torch.nn.MSELoss()
 
     print("+ Starting Training Loop")
     for epoch in range(args.epochs):
@@ -51,21 +50,24 @@ def train(args):
         epoch_loss = 0
         for batch_i, paths in enumerate(dataloader):
             batches_done = len(dataloader)*epoch + batch_i
+            optimizer.zero_grad()
 
             paths = Variable(paths.to(device))
             outpaths = model(paths)
-            loss = mse_loss(paths, outpaths)
+            #print(outpaths)
+            loss = loss_func(paths, outpaths)
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
+            #optimizer.zero_grad()
 
             writer.add_scalar(tag="loss/MSE Loss", scalar_value=loss, global_step=int(batches_done) )
-            #print(f"loss {loss}, seq_len {paths.shape}   batches_done  {batches_done}")
+            print(f"loss {loss}, batches_done  {batches_done}")
             epoch_loss += loss
 
         print(f"Epoch: {epoch} loss:  {epoch_loss/float(len(dataloader))}   Time: {time.time()-start_time}")
         writer.add_scalar(tag="loss/epoch loss", scalar_value=epoch_loss/float(len(dataloader)), global_step=int(epoch))
         if epoch%5==4:
+            print("Saving checkpoint")
             torch.save(model.state_dict(), f"checkpoints/lstmAE_ckpt_epoch_{epoch}.pth")
 
     return
@@ -78,7 +80,7 @@ if __name__=="__main__":
     parser.add_argument("--n_cpu", type=int, default=0, help="")
     parser.add_argument("--train_data", type=str, required=True, help="Path to the training data")
     parser.add_argument("--valid_data", type=str, help="Path to the validation data")
-    parser.add_argument("--hidden_size", type=int, default=20, help="dimension of hidden/encoded size")
+    parser.add_argument("--hidden_size", type=int, default=100, help="dimension of hidden/encoded size")
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the encoder/decoder LSTM")
     args = parser.parse_args()
 
