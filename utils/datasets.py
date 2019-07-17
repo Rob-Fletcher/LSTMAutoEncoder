@@ -2,6 +2,7 @@ import tables
 import torch
 from torch.utils.data import Dataset
 from random import randint, seed
+from tqdm import tqdm
 
 class PathData(Dataset):
     """ Load path data as vector """
@@ -22,10 +23,11 @@ class PathData(Dataset):
         self.min = torch.tensor([self.detections[:]['x1'].min(), self.detections[:]['y1'].min()], dtype=torch.float64)
         self.max = torch.tensor([self.detections[:]['x1'].max(), self.detections[:]['y1'].max()], dtype=torch.float64)
         uniqueList = []
-        for id in uniqueIDs_all:
+        print("Removing all sequences with a length less than 10.")
+        for id in tqdm(uniqueIDs_all):
             path = self.detections.read_where("""ID=={}""".format(id))
             if len(path) <= 10:
-                print(f"ID: {id} has squence length less than 10. Discarding")
+                continue
             else:
                 uniqueList.append(id)
 

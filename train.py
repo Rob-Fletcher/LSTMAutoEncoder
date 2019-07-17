@@ -12,12 +12,19 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch.optim as optim
 
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
+import mlflow
 
 def train(args):
 
+    mlflow.set_experiment("LSTM Autoencoder")
+    mlflow.start_run(run_name=args.tag)
+    params = vars(args)
+    for par in params:
+        mlflow.log_param(par, params[par])
+
     #Tensorboard writer
-    writer = SummaryWriter()
+    #writer = SummaryWriter()
     if args.n_cpu > 0:
         print("Pytables is currently not thread safe. Setting n_cpu to 0.")
     args.n_cpu = 0
@@ -28,15 +35,20 @@ def train(args):
     os.makedirs("checkpoints", exist_ok=True)
 
     input_size = 2
-    model = LSTMAE(input_size=input_size, hidden_size=args.hidden_size, num_layers=args.num_layers).to(device)
+    model = LSTMAE(input_size=input_size,lin_hidden_size=20, hidden_size=args.hidden_size, lin_output_size=30, num_layers=args.num_layers).to(device)
     model.apply(init_weights)
     print("+ Model Loaded.")
 
+    start_epoch = 1
     if args.weights:
         print(f"Loading model weights from {args.weights}")
+        start_epoch = args.weights.split('_')[-1]
+        start_epoch = int(start_epoch.split('.')[0])+1 #continue from the epoch we left off at
+        print(f"Continuing training from epoch {start_epoch}")
         model.load_state_dict(torch.load(args.weights))
-    model.train()
 
+    mlflow.log_param("Start Epoch", start_epoch)
+    model.train()
 
     dataset = PathData(args.train_data, sequence_length=args.seq_len)
     dataloader = DataLoader(
@@ -46,39 +58,40 @@ def train(args):
         num_workers=args.n_cpu
     )
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(),lr=args.lr)
     loss_func = torch.nn.MSELoss()
 
     print("+ Starting Training Loop")
-    for epoch in range(0,args.epochs):
+    for epoch in range(start_epoch,start_epoch+args.epochs):
         start_time = time.time()
         epoch_loss = 0
         for batch_i, paths in enumerate(dataloader):
-            batches_done = len(dataloader)*epoch + batch_i
+            #batches_done = len(dataloader)*epoch + batch_i
 
             optimizer.zero_grad()
 
+            # Run the model for the current batch and get loss
             paths = paths.to(device)
             outpaths = model(paths)
-            #print(outpaths)
             loss = loss_func(outpaths, paths)
+
+            # Backprop the loss function and step the optimizer
             loss.backward()
-            #print(model.decoder.lstm.weight_hh_l0)
             optimizer.step()
-            #print(model.decoder.lstm.weight_hh_l0)
 
 
-            writer.add_scalar(tag="loss/MSE Loss", scalar_value=loss, global_step=int(batches_done) )
+            # writer.add_scalar(tag="loss/MSE Loss", scalar_value=loss, global_step=int(batches_done) )
             #print(f"loss {loss.item()}, batches_done  {batches_done}")
-            epoch_loss += loss
+            epoch_loss += loss.item()
 
         print(f"Epoch: {epoch} loss:  {epoch_loss/float(len(dataloader))}   Time: {time.time()-start_time}")
-        writer.add_scalar(tag="loss/epoch loss", scalar_value=epoch_loss/float(len(dataloader)), global_step=int(epoch))
-        if epoch%5==4 or epoch==args.epochs-1:
+        mlflow.log_metric(key="Epoch Loss", value=epoch_loss/float(len(dataloader)), step=int(epoch))
+        # writer.add_scalar(tag="loss/epoch loss", scalar_value=epoch_loss/float(len(dataloader)), global_step=int(epoch))
+        if epoch%10==0 or epoch==args.epochs:
             print("Saving checkpoint")
             torch.save(model.state_dict(), f"checkpoints/lstmAE_ckpt_epoch_{epoch}.pth")
 
-    writer.close()
+    #writer.close()
     return
 
 if __name__=="__main__":
@@ -92,6 +105,8 @@ if __name__=="__main__":
     parser.add_argument("--hidden_size", type=int, default=100, help="dimension of hidden/encoded size")
     parser.add_argument("--num_layers", type=int, default=1, help="Number of layers in the encoder/decoder LSTM")
     parser.add_argument("--seq_len", type=int, default=10, help="Sequence length to train on.")
+    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--tag", type=str, default='run', help="A tag to help identify the run in MLFlow")
     args = parser.parse_args()
 
     train(args)
