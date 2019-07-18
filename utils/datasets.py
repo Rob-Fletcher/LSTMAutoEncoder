@@ -32,6 +32,7 @@ class PathData(Dataset):
                 uniqueList.append(id)
 
         self.uniqueIDs = torch.tensor(uniqueList, dtype=torch.int32)
+        print("Removing paths of parked cars.")
         print(f"Total paths in dataset: {self.uniqueIDs.shape[0]}")
 
 

@@ -6,6 +6,7 @@ from utils.utils import *
 import argparse
 import os
 import time
+import random
 
 import torch
 from torch.utils.data import DataLoader
@@ -29,8 +30,12 @@ def train(args):
         print("Pytables is currently not thread safe. Setting n_cpu to 0.")
     args.n_cpu = 0
 
+    with open(args.geo) as vcf:
+        vconfig = json.load(vcf)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Using device {device}")
     os.makedirs("output", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
 
@@ -51,6 +56,7 @@ def train(args):
     model.train()
 
     dataset = PathData(args.train_data, sequence_length=args.seq_len)
+    #valid_data = PathData(args.valid_data, sequence_length=args.seq_len)
     dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -78,6 +84,16 @@ def train(args):
             # Backprop the loss function and step the optimizer
             loss.backward()
             optimizer.step()
+
+            #Every 10 epochs pick a path and draw it next to its reconstruction
+            #then log this as an artifact in mlflow
+            #TODO: Make this work with validation data
+            if epoch%10==1 and batch_i == 0:
+                print("Generating validation image...")
+                #bp = random.randint(0, len(dataloader))
+                bp = 100
+                img_name = drawValidation(paths[bp].cpu(), outpaths[bp].cpu(), f"output/Valid_img_epoch_{epoch}.png")
+                mlflow.log_artifact(img_name)
 
 
             # writer.add_scalar(tag="loss/MSE Loss", scalar_value=loss, global_step=int(batches_done) )
