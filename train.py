@@ -1,5 +1,5 @@
 from __future__ import division
-from model.LSTMAE2 import *
+from model.LSTMAE import *
 from utils.datasets import *
 from utils.utils import *
 
@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch.optim as optim
 
-#from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import mlflow
 
 def train(args):
@@ -25,13 +25,17 @@ def train(args):
         mlflow.log_param(par, params[par])
 
     #Tensorboard writer
-    #writer = SummaryWriter()
+    writer = SummaryWriter()
     if args.n_cpu > 0:
         print("Pytables is currently not thread safe. Setting n_cpu to 0.")
     args.n_cpu = 0
 
-    with open(args.geo) as vcf:
-        vconfig = json.load(vcf)
+    vconfig = None
+    try:
+        with open(args.geo) as vcf:
+            vconfig = json.load(vcf)
+    except:
+        pass
 
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,7 +44,7 @@ def train(args):
     os.makedirs("checkpoints", exist_ok=True)
 
     input_size = 2
-    model = LSTMAE(input_size=input_size,lin_hidden_size=20, hidden_size=args.hidden_size, lin_output_size=30, num_layers=args.num_layers).to(device)
+    model = LSTMAE(input_size=input_size,lin_hidden_size=20, hidden_size=args.hidden_size, lin_output_size=30, num_layers=1).to(device)
     model.apply(init_weights)
     print("+ Model Loaded.")
 
@@ -67,6 +71,8 @@ def train(args):
     optimizer = torch.optim.Adam(model.parameters(),lr=args.lr)
     loss_func = torch.nn.MSELoss()
 
+    writer.add_graph(model=model, input_to_model=next(iter(dataloader)), verbose=True)
+
     print("+ Starting Training Loop")
     for epoch in range(start_epoch,start_epoch+args.epochs):
         start_time = time.time()
@@ -91,8 +97,8 @@ def train(args):
             if epoch%10==1 and batch_i == 0:
                 print("Generating validation image...")
                 #bp = random.randint(0, len(dataloader))
-                bp = 100
-                img_name = drawValidation(paths[bp].cpu(), outpaths[bp].cpu(), f"output/Valid_img_epoch_{epoch}.png")
+                bp = 10
+                img_name = drawValidation(paths[[bp, bp+2, bp+4]].cpu(), outpaths[[bp, bp+2, bp+4]].cpu(), f"output/Valid_img_epoch_{epoch}.png")
                 mlflow.log_artifact(img_name)
 
 
@@ -107,7 +113,8 @@ def train(args):
             print("Saving checkpoint")
             torch.save(model.state_dict(), f"checkpoints/lstmAE_ckpt_epoch_{epoch}.pth")
 
-    #writer.close()
+    writer.close()
+    torch.save(model.state_dict(), f"checkpoints/lstmAE_ckpt_final.pth")
     return
 
 if __name__=="__main__":
@@ -119,7 +126,6 @@ if __name__=="__main__":
     parser.add_argument("--train_data", type=str, required=True, help="Path to the training data")
     parser.add_argument("--valid_data", type=str, help="Path to the validation data")
     parser.add_argument("--hidden_size", type=int, default=100, help="dimension of hidden/encoded size")
-    parser.add_argument("--num_layers", type=int, default=1, help="Number of layers in the encoder/decoder LSTM")
     parser.add_argument("--seq_len", type=int, default=10, help="Sequence length to train on.")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--tag", type=str, default='run', help="A tag to help identify the run in MLFlow")
