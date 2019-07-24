@@ -5,7 +5,9 @@ import os
 #import modin.pandas as pd
 import pandas as pd
 import json
-import arcgis
+from shapely.geometry import MultiPoint, Point, Polygon
+from shapely.prepared import prep
+from shapely.strtree import STRtree
 from tqdm import tqdm
 import time
 #import ray
@@ -19,20 +21,15 @@ class geoms():
         self.drivethru = drivethru
 
     def get_Geoms(self, row):
-        box_geom = arcgis.geometry.Polygon({"rings": [[ [row['x1'], row['y1']],
-                                                        [row['x2'], row['y1']],
-                                                        [row['x2'], row['y2']],
-                                                        [row['x1'], row['y2']]  ]],
-                                                        "spatialReference": 3857})
+        box_geom = Polygon([ [row['x1'], row['y1'] ],
+                             [row['x2'], row['y1'] ],
+                             [row['x2'], row['y2'] ],
+                             [row['x1'], row['y2'] ]]   )
 
 
-        box_centroid = arcgis.geometry.Point({"x": row['xc'],
-                                              "y": row['yc'],
-                                              "spatialReference":{'wkid':3857} })
+        box_centroid = Point([ row['xc'], row['yc'] ] )
 
-        isParked = False
-        for point in self.parking:
-            isParked = isParked | box_geom.contains(point)
+        isParked = bool(self.parking.query(box_geom))
 
         isOnProp = self.prop_bounds.contains(box_centroid)
         isDT = self.drivethru.contains(box_centroid)
@@ -64,15 +61,9 @@ def main(args):
             config = json.load(cf)
 
         print("+ Loading geometries...")
-        parking = config['parking_centerpoints']
-        prop_bounds = config['property_boundary']
-        drivethru = config['drivethrough_boundary']
-        parking_geom = []
-        for point in parking:
-            parking_geom.append(arcgis.geometry.Point(point, spatialReference={"wkid": 3857}))
-
-        prop = arcgis.geometry.Polygon({"rings": [prop_bounds], "spatialReference": 3857})
-        dt = arcgis.geometry.Polygon({"rings": [drivethru], "spatialReference": 3857})
+        parking = STRtree(MultiPoint(config['parking_centerpoints']))
+        prop_bounds = prep(Polygon(config['property_boundary']))
+        dt_bounds = prep(Polygon(config['drivethrough_boundary']))
         print("+     done.")
 
         print("+ Calculating geometries and intersections...")
@@ -81,7 +72,7 @@ def main(args):
         detections['yc'] = detections['y1'] + (detections['y2'] - detections['y1'])/2
 
         # Non-Ray section ###########################
-        g = geoms(parking_geom, prop, dt)
+        g = geoms(parking, prop_bounds, dt_bounds)
         results=[]
         detections = detections[::2]
         for index,row in tqdm(detections.iterrows(), total=detections.shape[0]):

@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from random import randint, seed
 from tqdm import tqdm
 
-class PathData(Dataset):
+class PathDataH5(Dataset):
     """ Load path data as vector """
 
     def __init__(self, data_file, sequence_length=100):
@@ -56,3 +56,20 @@ class PathData(Dataset):
             #print(f"length less than {self.seq_len}")
             subPath[:length] = path[:]
         return subPath
+
+class PathDataNP(Dataset):
+    """ Load data where each path is its own .npy file """
+    def __init__(self, dataPath, seq_len = 50):
+        self.dataPath = dataPath
+        self.seq_len = seq_len
+        self.files = []
+
+        # Find all .npy files in the data path
+        for root, dirs, files in os.walk(dataPath):
+            for file in files:
+                if file.endswith('.npy'):
+                    self.files.append(os.path.join(root, file))
+
+
+    def __len__(self):
+        return len(self.files)
