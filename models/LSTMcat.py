@@ -11,15 +11,11 @@ class EncoderLSTM(torch.nn.Module):
         self.lin_output_size = lin_output_size
         self.num_layers = num_layers
 
+        #Encoder Branch
         self.relu = torch.nn.ReLU()
         self.lin_1 = torch.nn.Linear(input_size, lin_hidden_size)
         self.lin_2 = torch.nn.Linear(lin_hidden_size, lin_output_size)
         self.lstm = torch.nn.LSTM(lin_output_size, hidden_size, num_layers)
-
-        self.cat_lin_1 = torch.nn.Linear(hidden_size, 64)
-        self.cat_relu = torch.nn.ReLU()
-        self.cat_lin_2 = torch.nn.Linear(64, cat_dim)
-        self.cat_SM = torch.nn.Softmax()
 
     def forward(self, input):
         hidden = self.lin_1(input)
@@ -27,12 +23,35 @@ class EncoderLSTM(torch.nn.Module):
         hidden = self.lin_2(hidden)
         encoded_input, hidden = self.lstm(hidden)
 
+        return encoded_input
+
+class EncodeCat(torch.nn.Module):
+    def __init__(self, hidden_size, cat_dim):
+        super(EncodeCat, self).__init__()
+        self.hidden_size = hidden_size
+        self.cat_dim = cat_dim
+
+        self.cat_lin_1 = torch.nn.Linear(hidden_size, 64)
+        self.cat_relu = torch.nn.ReLU()
+        self.cat_lin_2 = torch.nn.Linear(64, cat_dim)
+        self.cat_SM = torch.nn.Softmax()
+
+    def forward(self, encoded_input):
+
         encoded_cat = self.cat_lin_1(encoded_input)
         encoded_cat = self.cat_relu(encoded_cat)
         encoded_cat = self.cat_lin_2(encoded_cat)
         encoded_cat = self.cat_SM(encoded_cat)
 
-        return encoded_input, encoded_cat,
+        return encoded_cat
+
+class EncodeNorm(torch.nn.Module):
+    def __init__(self):
+        super(EncodeNorm, self).__init__()
+
+    def forward(self):
+
+        return
 
 class DecoderLSTM(torch.nn.Module):
     def __init__(self, output_size, lin_hidden_size, hidden_size, lin_output_size, num_layers):
