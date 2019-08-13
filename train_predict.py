@@ -131,7 +131,7 @@ def train(args):
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()
                         },"checkpoints/lstmAE_ckpt.pth")
-        print(f"Epoch: {epoch} total loss:  {e_total_loss/float(len(dataloader))}   Time: {time.time()-start_time :.2f}  Model Time: {model_time:.2f}")
+        print(f"Epoch: {epoch} total loss:  {e_total_loss/float(len(dataloader))}   Time: {(time.time()-start_time):.2f}  Model Time: {model_time:.2f}")
         print(f"               recon loss:  {e_recon_loss/float(len(dataloader))}")
         print(f"               pred loss:   {e_pred_loss/float(len(dataloader))}")
 
