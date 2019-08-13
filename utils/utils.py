@@ -27,7 +27,7 @@ def drawValidation(targets, recons, file_name):
         a[1].plot(r[:,0].data.numpy(), '-', c='r')
         a[2].plot(t[:,0].data.numpy(), '-')
         a[2].plot(r[:,0].data.numpy(), '-', c='r')
-        a[0].set_title("Input Sequence")
+        a[0].set_title(f"Input Sequence [{t[0,2]},{t[0,3]},{t[0,4]}]")
         a[1].set_title("Output Sequence")
         a[2].set_title("Input/Output Sequences")
     plt.savefig(file_name)

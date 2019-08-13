@@ -41,4 +41,6 @@ class PathDataNP(Dataset):
         start_index = randint(0, len(path)-(self.seq_len+self.pred_len))
         subpath = torch.from_numpy(path[start_index:(start_index+self.seq_len)]).float()
         predpath = torch.from_numpy(path[(start_index+self.seq_len) : (start_index+self.seq_len+self.pred_len)]).float()
+        subpath[:,:2] = subpath[:,:2].mul(10000)
+        predpath[:,:2] = predpath[:,:2].mul(10000)
         return subpath, predpath

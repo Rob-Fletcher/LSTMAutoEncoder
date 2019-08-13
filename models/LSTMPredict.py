@@ -62,7 +62,8 @@ class PredictLSTM(torch.nn.Module):
         hidden = self.lin_1(decoded_output)
         hidden = self.relu(hidden)
         hidden = self.lin_2(hidden)
-        hidden_disp, hidden_cat = hidden[:,:,:2], self.sig(hidden[:,:,2:])
+        hidden_disp = hidden[:,:,:2]
+        hidden_cat = self.sig(hidden[:,:,2:])
         return hidden_disp, hidden_cat
 
 class LSTMAE(torch.nn.Module):
