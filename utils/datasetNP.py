@@ -29,6 +29,7 @@ class PathDataNP(Dataset):
                     self.paths.append(np.load(os.path.join(root, file)))
 
         print(f"Total files found: {len(self.files)}.")
+        print(f"Total files loaded into memory {len(self.paths)}")
 
 
     def __len__(self):

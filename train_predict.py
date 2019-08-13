@@ -75,6 +75,7 @@ def train(args):
         e_pred_loss = 0
         e_pred_cat_loss = 0
         e_total_loss = 0
+        model_time = 0
         for batch_i, (paths, pred) in enumerate(dataloader):
             optimizer.zero_grad()
 
@@ -91,7 +92,7 @@ def train(args):
             # Backprop the loss function and step the optimizer
             total_loss.backward()
             optimizer.step()
-            model_time = time.time() - model_s_time
+            model_time += time.time() - model_s_time
 
 
             #Every 10 epochs pick a path and draw it next to its reconstruction
