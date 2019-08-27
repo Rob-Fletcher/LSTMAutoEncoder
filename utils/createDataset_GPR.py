@@ -86,14 +86,14 @@ def main(args):
         detections[['isParked', 'isOnProp', 'isDT']] = pd.DataFrame(results, index=detections.index)
         ##############################################
 
-        # assert args.minmax != args.z
+        assert args.minmax != args.z
 
         if args.minmax:
             min_m = np.array([detections['xc'].min(), detections['yc'].min()], dtype=np.float64)
             max_m = np.array([detections['xc'].max(), detections['yc'].max()], dtype=np.float64)
 
-            # Normalize x and y to [0,100]
-            detections[['xc', 'yc']] = (detections[['xc','yc']]- min_m)*100 / (max_m - min_m)
+            # Normalize x and y to [0,1]
+            detections[['xc', 'yc']] = (detections[['xc','yc']]- min_m) / (max_m - min_m)
 
         elif args.z:
             mean_c = np.array([detections['xc'].mean(), detections['yc'].mean()], dtype=np.float64)
@@ -111,12 +111,12 @@ def main(args):
         print("+ Writing out file.")
         #write out individual paths to separate numpy files
         for id,path in detections.groupby('ID', sort=False):
-            if len(path) < args.trim +1:
+            if len(path) < args.trim +30:
                 continue
             path_temp = path.copy()
-            # path_temp[['xc','yc']] = path_temp[['xc','yc']].rolling(1).mean()
+            path_temp[['xc','yc']] = path_temp[['xc','yc']].rolling(10).mean()
             path_temp[['xd','yd']] = path_temp[['xc','yc']].diff()
-            path_temp = path_temp[['xc','yc','xd','yd','isParked','isOnProp','isDT']].dropna(how='any')
+            path_temp = path_temp[['xd','xd','isParked','isOnProp','isDT']].dropna(how='any')
             if path_temp.isnull().values.any():
                 print("DF has NAN!!!!")
             np.save(os.path.join(args.output, location, f"{int(id)}.npy"), path_temp.to_numpy())
@@ -128,9 +128,9 @@ def main(args):
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datadir', type=str,default='data', required=True, help="Directory containing subfolders of each location with h5 files.")
+    parser.add_argument('--datadir', type=str, required=True, help="Directory containing subfolders of each location with h5 files.")
     parser.add_argument('--output', type=str, default="preped_data", help="Directory to write data out to.")
-    parser.add_argument('--minmax', action="store_true", default=False, help="Min max scale the inputs. (range [0,1])")
+    parser.add_argument('--minmax', action="store_true", default=True, help="Min max scale the inputs. (range [0,1])")
     parser.add_argument('-z', action="store_true", default=False, help="Standard scale the inputs. (z-score)")
     parser.add_argument('--decimate', type=int , default=1, help="Decimate the data by a factor of N. i.e. data[::N]")
     parser.add_argument('--trim', type=int, default=100, help="Dont include paths that are less than this amount.")
